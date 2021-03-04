@@ -3,7 +3,9 @@ const app = express()
 const cors = require('cors')
 const mongo = require('mongodb');
 const mongoose = require('mongoose');
+mongoose.set('useFindAndModify', false);
 const bodyParser = require("body-parser");
+const { ObjectID } = require('mongodb');
 //const console = require("console")
 require('dotenv').config()
 
@@ -20,15 +22,22 @@ app.get('/', (req, res) => {
 
 const Schema = mongoose.Schema;
 
-const userSchema = new Schema({
-  username: String
-});
+
+
+//https://medium.com/@beaucarnes/learn-the-mern-stack-by-building-an-exercise-tracker-mern-tutorial-59c13c1237a1
+
+//https://www.youtube.com/watch?v=ANfJ0oGL2Pk
+
 
 const exerciseSchema = new Schema({
-  username: String,
   description: String,
   duration: Number,
-  date: Date
+  date: String
+});
+
+const userSchema = new Schema({
+  username: String,
+  log: [exerciseSchema]
 });
 
 const userObj = mongoose.model("user", userSchema);
@@ -49,62 +58,249 @@ function createNewUser(username) {
 
 
 
-async function getUsers() {
-  return userObj.find({});
+async function addExerciseLog(exObj) {
+
+let exerciseDate,exerciseDate0;
+let regex=/([A-Z]{1}[a-z]{2})(, )([0-3][0-9])( )([A-Z]{1}[a-z]{2})( )([0-9]{4})( )([0-9]{2}:[0-9]{2}:[0-9]{2} GMT)/
+
+if (exObj.date) {
+  exerciseDate = new Date(exObj.date)
+} 
+else {
+ exerciseDate=new Date()
+}
+
+/*regex solution when .toDateString() didn't work
+exerciseDate=exerciseDate0.toUTCString()
+
+exerciseDate=exerciseDate.replace(/([A-Z]{1}[a-z]{2})( )([0-3][0-9])( )([A-Z]{1}[a-z]{2})/,'$1$2$5$2$3' )*/
+
+//create new exerciseObj with input data
+  let newExercise=new exerciseObj
+  ({
+    description: exObj.description,
+    duration: exObj.duration,
+    date: exerciseDate.toISOString().slice(0,10)
+  })
+
+  
+ let updatedUser=await userObj.findByIdAndUpdate(
+ exObj.userId,
+ {$addToSet: {log: newExercise}}, /*add exerciseObj to log array*/
+ {new: true}) /*return new document, run query now*/
+ console.log(updatedUser)
+
+let response = new Object({_id: updatedUser._id,username: updatedUser.username, description: newExercise.description,duration:newExercise.duration, date: exerciseDate.toDateString()})
+// newExercise.username=updatedUser.username
+  
+  return response
+}
+
+//https://studio3t.com/knowledge-base/articles/mongodb-aggregation-framework
+
+async function getLogs(query) {
+
+ let logs
+  if (query.userId) {
+
+    if (query.from && !query.to) {
+
+if (query.limit) {
+//console.log(query.limit)
+
+ logs =  await userObj.aggregate([
+   
+  { $match : { _id : mongoose.Types.ObjectId(query.userId) } },
+  {$unwind: "$log"},
+  
+  
+   {$match:{"log.date":{ $gte : query.from  }}},
+   { $limit : query.limit }, 
+   {
+     $group:{
+       _id:"$_id",
+       username:{"$first":"$username"},
+       count: { "$sum": 1 },
+       log:{$push:"$log"}}},
+      {$project:{"log._id":0}}
+
+
+
+])
 
 }
 
-function addExerciseLog(userId, description, duration, date) {
-let newExercise=new exerciseObj({_id: userId, description: description, duration: duration, date: date})
-  newExercise.save((err, data) => {
-    if (err) {
-      console.log(err);
-      return 
+else {
+
+
+
+ logs =  await userObj.aggregate([
+
+{ $match : { _id : mongoose.Types.ObjectId(query.userId) } },
+{$unwind: "$log"},
+
+
+ {$match:{"log.date":{ $gte : query.from  }}},
+
+ {$group:{_id:"$_id",username:{"$first":"$username"},count: { "$sum": 1 },log:{$push:"$log"}}},
+        {$project:{"log._id":0}}
+
+//{ $project : { log : { $filter : { input : "$log", cond : { $gte : [ "$$this.date", query.from ] } } } } }
+
+ ])
+
+}
+console.log(logs)
+   return logs
     }
 
-  });
-  //console.log(newExercise)
-  return newExercise
+        if (!query.from && query.to ) {
+
+if (query.limit) {
+
+  logs =  await userObj.aggregate([
+   
+    { $match : { _id : mongoose.Types.ObjectId(query.userId) } },
+    {$unwind: "$log"},
+    
+    
+     {$match:{"log.date":{ $lte : query.to  }}},
+  
+  { $limit : query.limit }, 
+
+  {$group:{_id:"$_id",username:{"$first":"$username"},count: { "$sum": 1 },log:{$push:"$log"}}},
+        {$project:{"log._id":0}}
+  
+  ])
+//return logs
+}
+else {
+  logs =  await userObj.aggregate([
+   
+    { $match : { _id : mongoose.Types.ObjectId(query.userId) } },
+    {$unwind: "$log"},
+    
+    
+     {$match:{"log.date":{ $lte : query.to  }}},
+
+     {$group:{_id:"$_id",username:{"$first":"$username"},count: { "$sum": 1 },log:{$push:"$log"}}},
+     {$project:{"log._id":0}}
+
+  ])
+
 }
 
-function getLogs() {
+return logs
 
 }
+
+
+      if (query.from && query.to) {
+if (query.limit) {
+logs =  await userObj.aggregate([
+{ $match : { _id : mongoose.Types.ObjectId(query.userId) } },
+{$unwind: "$log"},
+{$match:{"log.date":{ $gte: query.from, $lte : query.to  }}},
+  { $limit : query.limit },
+  {$group:{_id:"$_id",username:{"$first":"$username"},count: { "$sum": 1 },log:{$push:"$log"}}},
+        {$project:{"log._id":0}}
+ ])
+
+ //return logs
+
+}
+else {
+  logs =  await userObj.aggregate([
+    { $match : { _id : mongoose.Types.ObjectId(query.userId) } },
+    {$unwind: "$log"},
+    {$match:{"log.date":{ $gte: query.from, $lte : query.to  }}},
+    {$group:{_id:"$_id",username:{"$first":"$username"},count: { "$sum": 1 },log:{$push:"$log"}}},
+        {$project:{"log._id":0}}
+     ])
+ 
+}
+return logs
+
+      }
+      logs =  await userObj.aggregate([
+        { $match : { _id : mongoose.Types.ObjectId(query.userId) } },
+    {$unwind: "$log"},
+        
+    //https://stackoverflow.com/questions/40083592/mongo-unwind-and-group
+    //https://www.tutorialspoint.com/grouping-the-array-items-in-mongodb-and-get-the-count-the-products-with-similar-price
+        
+        {$group:{_id:"$_id",username:{"$first":"$username"},count:{"$sum":1},log:{$push:"$log"}}},
+       
+        {$project:{"log._id":0}}
+      ])
+    return logs
+  }
+  else {
+    return "No userId Entered"
+  }
+
+}
+
+//You can POST to /api/exercise/new-user with form data username to create a new user. The returned response will be an object with username and _id properties.
 
 app.post('/api/exercise/new-user', function(req, res) {
   let user = createNewUser(req.body.username)
+  console.log(user)
   res.json({ username: user.username, _id: user._id })
 })
 
+//You can make a GET request to api/exercise/users to get an array of all users. Each element in the array is an object containing a user's username and _id.
+
 app.get('/api/exercise/users', async function(req, res) {
-  let g = await getUsers()
-  let userArray = []
-
-  g.forEach(function(e) {
-    userArray.push({username: e.username, _id: e._id})
-
-  })
-
-  res.json(userArray)
+ 
+  res.json(await userObj.find({},'username _id').exec())
 
 })
 
-app.post('/api/exercise/add', function(req, res) {
+//You can POST to /api/exercise/add with form data userId=_id, description, duration, and optionally date. If no date is supplied, the current date will be used. The response returned will be the user object with the exercise fields added. (_id,username,description,duration,date)
 
-  let date;
-  if (req.body.date===null) {
-    date=new Date()
-  } else {
-    date = req.body.date
+//format in db does not look like what is returned: make sure it's a subdocument in the log field array,  not separate docs with username, description, duration, date
+
+
+app.post('/api/exercise/add', async function(req, res) {
+
+
+  let exercise = await addExerciseLog(req.body)
+
+ res.json(exercise)
+})
+
+/*You can make a GET request to /api/exercise/log with a parameter of userId=_id to retrieve a full exercise log of any user. The returned response will be the user object with a log array of all the exercises added. Each log item has the description, duration, and date properties.
+
+A request to a user's log (/api/exercise/log) returns an object with a count property representing the number of exercises returned.
+
+You can add from, to and limit parameters to a /api/exercise/log request to retrieve part of the log of any user. from and to are dates in yyyy-mm-dd format. limit is an integer of how many logs to send back.
+
+1. if dateFrom exists,dateTo doesn't:start at dateFrom, return to end
+unless limit&&limit<range
+
+2. if dateFrom doesn't exist but dateTo does: start at beginning, return to dateTo
+unless limit&&limit<range
+
+3. if both exist: dateFrom to dateTo
+unless limit&&limit<range
+
+4. neither exist: beginning to end,
+unless limit&&limit<range
+*/
+
+app.get('/api/exercise/log:userId?', async function(req, res) {
+  console.log(req.query)
+  let query=req.query
+  if (req.query.limit) {
+  query.limit=parseInt(query.limit)
   }
-  
-let exercise = addExerciseLog(req.body.userId, req.body.description, req.body.duration, date)
-console.log(exercise)
-res.json(exercise)
-})
+ // console.log(query)
+let exercises=await getLogs(query)
 
-app.get('/api/exercise/log', function(req, res) {
-
+//console.log(exercises)
+res.json(exercises)
+//res.json({_id:exercises._id,username: exercises.username,count: exercises["log"].length,log: exercises.log})
 })
 
 const listener = app.listen(process.env.PORT || 3000, () => {
