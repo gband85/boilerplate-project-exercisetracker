@@ -61,7 +61,6 @@ function createNewUser(username) {
 async function addExerciseLog(exObj) {
 
 let exerciseDate,exerciseDate0;
-let regex=/([A-Z]{1}[a-z]{2})(, )([0-3][0-9])( )([A-Z]{1}[a-z]{2})( )([0-9]{4})( )([0-9]{2}:[0-9]{2}:[0-9]{2} GMT)/
 
 if (exObj.date) {
   exerciseDate = new Date(exObj.date)
@@ -70,10 +69,6 @@ else {
  exerciseDate=new Date()
 }
 
-/*regex solution when .toDateString() didn't work
-exerciseDate=exerciseDate0.toUTCString()
-
-exerciseDate=exerciseDate.replace(/([A-Z]{1}[a-z]{2})( )([0-3][0-9])( )([A-Z]{1}[a-z]{2})/,'$1$2$5$2$3' )*/
 
 //create new exerciseObj with input data
   let newExercise=new exerciseObj
