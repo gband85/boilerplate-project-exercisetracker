@@ -110,6 +110,7 @@ if (query.limit) {
   
   
    {$match:{"log.date":{ $gte : query.from  }}},
+   {$sort:{"log.date":-1}},
    { $limit : query.limit }, 
    {
      $group:{
@@ -136,7 +137,7 @@ else {
 
 
  {$match:{"log.date":{ $gte : query.from  }}},
-
+{$sort:{"log.date":-1}},
  {$group:{_id:"$_id",username:{"$first":"$username"},count: { "$sum": 1 },log:{$push:"$log"}}},
         {$project:{"log._id":0}}
 
@@ -160,7 +161,7 @@ if (query.limit) {
     
     
      {$match:{"log.date":{ $lte : query.to  }}},
-  
+  {$sort:{"log.date":-1}},
   { $limit : query.limit }, 
 
   {$group:{_id:"$_id",username:{"$first":"$username"},count: { "$sum": 1 },log:{$push:"$log"}}},
@@ -177,6 +178,7 @@ else {
     
     
      {$match:{"log.date":{ $lte : query.to  }}},
+     {$sort:{"log.date":-1}},
 
      {$group:{_id:"$_id",username:{"$first":"$username"},count: { "$sum": 1 },log:{$push:"$log"}}},
      {$project:{"log._id":0}}
@@ -196,6 +198,7 @@ logs =  await userObj.aggregate([
 { $match : { _id : mongoose.Types.ObjectId(query.userId) } },
 {$unwind: "$log"},
 {$match:{"log.date":{ $gte: query.from, $lte : query.to  }}},
+{$sort:{"log.date":-1}},
   { $limit : query.limit },
   {$group:{_id:"$_id",username:{"$first":"$username"},count: { "$sum": 1 },log:{$push:"$log"}}},
         {$project:{"log._id":0}}
@@ -209,6 +212,7 @@ else {
     { $match : { _id : mongoose.Types.ObjectId(query.userId) } },
     {$unwind: "$log"},
     {$match:{"log.date":{ $gte: query.from, $lte : query.to  }}},
+    {$sort:{"log.date":-1}},
     {$group:{_id:"$_id",username:{"$first":"$username"},count: { "$sum": 1 },log:{$push:"$log"}}},
         {$project:{"log._id":0}}
      ])
@@ -223,7 +227,7 @@ return logs
         
     //https://stackoverflow.com/questions/40083592/mongo-unwind-and-group
     //https://www.tutorialspoint.com/grouping-the-array-items-in-mongodb-and-get-the-count-the-products-with-similar-price
-        
+        {$sort:{"log.date":-1}},
         {$group:{_id:"$_id",username:{"$first":"$username"},count:{"$sum":1},log:{$push:"$log"}}},
        
         {$project:{"log._id":0}}
