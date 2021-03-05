@@ -28,6 +28,12 @@ const Schema = mongoose.Schema;
 
 //https://www.youtube.com/watch?v=ANfJ0oGL2Pk
 
+//https://studio3t.com/knowledge-base/articles/mongodb-aggregation-framework
+
+//https://stackoverflow.com/questions/40083592/mongo-unwind-and-group
+
+//https://www.tutorialspoint.com/grouping-the-array-items-in-mongodb-and-get-the-count-the-products-with-similar-price
+
 
 const exerciseSchema = new Schema({
   description: String,
@@ -91,7 +97,7 @@ let response = new Object({_id: updatedUser._id,username: updatedUser.username, 
   return response
 }
 
-//https://studio3t.com/knowledge-base/articles/mongodb-aggregation-framework
+
 
 async function getLogs(query) {
 
@@ -243,8 +249,7 @@ return logs
         { $match :  { _id : mongoose.Types.ObjectId(query.userId) } },
 
         {$unwind: "$log"},
-    //https://stackoverflow.com/questions/40083592/mongo-unwind-and-group
-    //https://www.tutorialspoint.com/grouping-the-array-items-in-mongodb-and-get-the-count-the-products-with-similar-price
+    
         {$sort:{"log.date":-1}},
         {$group:{_id:"$_id",username:{"$first":"$username"},count:{"$sum":1},log:{$push:"$log"}}},
        
