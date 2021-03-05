@@ -221,10 +221,28 @@ else {
 return logs
 
       }
+      if (query.limit) {
+              logs =  await userObj.aggregate([
+      
+
+        { $match :  { _id : mongoose.Types.ObjectId(query.userId) } },
+
+        {$unwind: "$log"},
+    
+        {$sort:{"log.date":-1}},
+        { $limit : query.limit },
+        {$group:{_id:"$_id",username:{"$first":"$username"},count:{"$sum":1},log:{$push:"$log"}}},
+       
+        {$project:{"log._id":0}}
+      ])
+      }
+      else {
       logs =  await userObj.aggregate([
-        { $match : { _id : mongoose.Types.ObjectId(query.userId) } },
-    {$unwind: "$log"},
-        
+      
+
+        { $match :  { _id : mongoose.Types.ObjectId(query.userId) } },
+
+        {$unwind: "$log"},
     //https://stackoverflow.com/questions/40083592/mongo-unwind-and-group
     //https://www.tutorialspoint.com/grouping-the-array-items-in-mongodb-and-get-the-count-the-products-with-similar-price
         {$sort:{"log.date":-1}},
@@ -232,6 +250,8 @@ return logs
        
         {$project:{"log._id":0}}
       ])
+      console.log(logs)
+  }
     return logs
   }
   else {
@@ -298,7 +318,7 @@ app.get('/api/exercise/log:userId?', async function(req, res) {
 let exercises=await getLogs(query)
 
 //console.log(exercises)
-res.json(exercises)
+res.json(exercises[0])
 //res.json({_id:exercises._id,username: exercises.username,count: exercises["log"].length,log: exercises.log})
 })
 
